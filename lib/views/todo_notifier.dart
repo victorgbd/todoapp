@@ -14,6 +14,7 @@ class TodoNotifier extends StateNotifier<Iterable<TodoModel>?> {
 
   Future<void> load() async {
     _read(loadingNotifierProvider.notifier).state = true;
+    await Hive.openBox<TodoModel>('todo');
 
     // final String response = await rootBundle.loadString('assets/db.json');
     // final todos = await todoEntityFromJson(response);

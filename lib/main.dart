@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:form_builder_validators/localization/l10n.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
+import 'package:todoapp/misc/router.dart';
 import 'package:todoapp/views/loading_notifier.dart';
 import 'package:todoapp/views/new_todo_view.dart';
 import 'package:todoapp/views/todo_notifier_provider.dart';
@@ -14,17 +16,19 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TodoModelAdapter());
-  await Hive.openBox<TodoModel>('todo');
+  
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({Key? key}) : super(key: key);
+  
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
     return GlobalLoaderOverlay(
-      child: MaterialApp(
+      child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
         title: 'TODO',
         localizationsDelegates: const [
@@ -33,12 +37,10 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const HomePage(),
-          '/home': (context) => const MyHomePage(),
-          '/new': (context) => const NewTodo(),
-        },
+        
+       routeInformationProvider: router.routeInformationProvider,
+         routeInformationParser: router.routeInformationParser,
+        routerDelegate: router.routerDelegate,
       ),
     );
   }
@@ -57,7 +59,7 @@ class HomePage extends StatelessWidget {
           Center(
             child: ElevatedButton(
               onPressed: (() {
-                Navigator.pushNamed(context, '/home');
+                context.push('/home');
               }),
               child: const Text("dale aqui"),
             ),
@@ -107,7 +109,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         actions: [
           IconButton(
             onPressed: () {
-              Navigator.pushNamed(context, '/new');
+              // Navigator.pushNamed(context, '/new');
+              context.push('/new');
             },
             icon: const Icon(Icons.add),
           )
@@ -179,9 +182,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
               );
             }),
       ),
-      floatingActionButton: FloatingActionButton(onPressed: (() {
-        ref.read(todoNotifierProvider.notifier).load();
-      })),
+      
     );
   }
 }
