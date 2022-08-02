@@ -16,13 +16,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TodoModelAdapter());
-  
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
   const MyApp({Key? key}) : super(key: key);
-  
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,9 +36,8 @@ class MyApp extends ConsumerWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        
-       routeInformationProvider: router.routeInformationProvider,
-         routeInformationParser: router.routeInformationParser,
+        routeInformationProvider: router.routeInformationProvider,
+        routeInformationParser: router.routeInformationParser,
         routerDelegate: router.routerDelegate,
       ),
     );
@@ -70,6 +68,8 @@ class HomePage extends StatelessWidget {
   }
 }
 
+final searchProvider = StateProvider<String>((ref) => '');
+
 class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({Key? key}) : super(key: key);
 
@@ -94,6 +94,16 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   final DateFormat formatterdate = DateFormat('MM/dd/yyyy');
   final DateFormat formattertime = DateFormat('hh:mm:ss');
+  final controller = TextEditingController();
+
+  final filterProvider = Provider<List<TodoModel>>((ref) {
+    final todos = ref.watch(todoNotifierProvider) ?? [];
+    final search = ref.watch(searchProvider);
+
+    return todos
+        .where((element) => element.content.toLowerCase().contains(search))
+        .toList();
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +111,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       isLoading ? context.loaderOverlay.show() : context.loaderOverlay.hide();
     });
 
-    final todos = ref.watch(todoNotifierProvider) ?? [];
+    final todos = ref.watch(filterProvider);
+
     final screenSize = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
@@ -116,73 +127,94 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
           )
         ],
       ),
-      body: Center(
-        child: ListView.builder(
-            itemCount: todos.length,
-            itemBuilder: (context, index) {
-              var complete = todos.elementAt(index).isComplete == 'true';
-              var date = DateTime.parse(todos.elementAt(index).date);
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0, vertical: 10.0),
-                child: Row(
-                  children: [
-                    Column(
-                      children: [
-                        SizedBox(
-                            width: screenSize.width * 0.62,
-                            child: Text(
-                              todos.elementAt(index).content,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w900, fontSize: 20.0),
-                            )),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5.0),
-                          child: SizedBox(
-                              width: screenSize.width * 0.62,
-                              child: Text(
-                                'Creado: ${formatterdate.format(date)} a las ${formattertime.format(date)}',
-                                style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 10.0),
-                              )),
-                        ),
-                      ],
-                    ),
-                    const Expanded(child: SizedBox()),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () {
-                        ref
-                            .read(todoNotifierProvider.notifier)
-                            .delete(todos.elementAt(index));
-                      },
-                    ),
-                    const SizedBox(width: 10.0),
-                    IconButton(
-                      icon: Icon(
-                        Icons.check,
-                        color: complete ? Colors.green : Colors.grey,
-                      ),
-                      onPressed: () {
-                        if (complete) {
-                          complete = false;
-                        } else {
-                          complete = true;
-                        }
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: Container(
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5.0),
+                  border: Border.all(
+                      color: Theme.of(context).primaryColor, width: 2.0)),
+              child: TextField(
+                controller: controller,
+                onChanged: (value) =>
+                    ref.read(searchProvider.notifier).state = value,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: ListView.builder(
+                  itemCount: todos.length,
+                  itemBuilder: (context, index) {
+                    var complete = todos.elementAt(index).isComplete == 'true';
+                    var date = DateTime.parse(todos.elementAt(index).date);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0, vertical: 10.0),
+                      child: Row(
+                        children: [
+                          Column(
+                            children: [
+                              SizedBox(
+                                  width: screenSize.width * 0.62,
+                                  child: Text(
+                                    todos.elementAt(index).content,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 20.0),
+                                  )),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 5.0),
+                                child: SizedBox(
+                                    width: screenSize.width * 0.62,
+                                    child: Text(
+                                      'Creado: ${formatterdate.format(date)} a las ${formattertime.format(date)}',
+                                      style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 10.0),
+                                    )),
+                              ),
+                            ],
+                          ),
+                          const Expanded(child: SizedBox()),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              ref
+                                  .read(todoNotifierProvider.notifier)
+                                  .delete(todos.elementAt(index));
+                            },
+                          ),
+                          const SizedBox(width: 10.0),
+                          IconButton(
+                            icon: Icon(
+                              Icons.check,
+                              color: complete ? Colors.green : Colors.grey,
+                            ),
+                            onPressed: () {
+                              if (complete) {
+                                complete = false;
+                              } else {
+                                complete = true;
+                              }
 
-                        ref
-                            .read(todoNotifierProvider.notifier)
-                            .update(todos.elementAt(index), complete);
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }),
+                              ref
+                                  .read(todoNotifierProvider.notifier)
+                                  .update(todos.elementAt(index), complete);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+            ),
+          ),
+        ],
       ),
-      
     );
   }
 }
